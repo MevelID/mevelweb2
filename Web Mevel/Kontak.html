@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontak - UniteMevel</title>
+  <link rel="stylesheet" href="UniteMevelD.css">
+</head>
+<body>
+  <audio id="background-music" loop preload="auto">
+    <source src="lagu.mp3" type="audio/mpeg">
+  </audio>
+
+  <header class="site-header">
+    <nav class="navbar" aria-label="Navigasi utama">
+      <a class="brand" href="UniteMevel.html">
+        <span class="brand-name">UniteMevel</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="galeri.html">Galeri</a></li>
+        <li><a href="video.html">Video</a></li>
+        <li><a href="Kontak.html">Kontak</a></li>
+        <li><a href="UniteMevel.html">Beranda</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="contact-page">
+    <section class="contact-profile" aria-labelledby="contact-title">
+      <div class="profile-picture">
+        <img src="profile.jpg" alt="Foto profil UniteMevel">
+      </div>
+
+      <div class="profile-info">
+        <h1 id="contact-title">MUH. REYHAN GUFRAN</h1>
+
+        <div class="contact-list">
+          <a class="contact-item" href="mailto:blackmrg1557@gmail.com">
+            <span class="contact-icon" aria-hidden="true">
+              <img src="gmail.png" alt="">
+            </span>
+            <span>blackmrg1557@gmail.com</span>
+          </a>
+
+          <a class="contact-item" href="tel:+6285182362021">
+            <span class="contact-icon" aria-hidden="true">
+              <img src="phone.png" alt="">
+            </span>
+            <span>+6285182362021</span>
+          </a>
+
+          <a class="contact-item" href="https://www.instagram.com/yo_its_me_rey" target="_blank" rel="noopener">
+            <span class="contact-icon" aria-hidden="true">
+              <img src="ig.png" alt="">
+            </span>
+            <span>yo_its_me_rey</span>
+          </a>
+
+          <a class="contact-item" href="https://www.facebook.com/" target="_blank" rel="noopener">
+            <span class="contact-icon" aria-hidden="true">
+              <img src="fb.png" alt="">
+            </span>
+            <span>Reyss Up</span>
+          </a>
+        </div>
+
+        <p class="profile-bio">
+          Orang ini suka menjelajahi hal yang baru tapi sesuai mood :v. teknologi, game, luar angkasa, teori, konspirasi, seni, sejarah, trik dan hal random lainnya. 
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const backgroundMusic = document.getElementById("background-music");
+    const musicTimeKey = "unitemevel-music-time";
+    const musicStateKey = "unitemevel-music-playing";
+    let isLeavingPage = false;
+
+    function playMusic() {
+      backgroundMusic.play().catch(() => {});
+    }
+
+    backgroundMusic.addEventListener("loadedmetadata", () => {
+      const savedTime = Number(localStorage.getItem(musicTimeKey));
+
+      if (savedTime > 0 && savedTime < backgroundMusic.duration) {
+        backgroundMusic.currentTime = savedTime;
+      }
+    });
+
+    backgroundMusic.addEventListener("timeupdate", () => {
+      localStorage.setItem(musicTimeKey, backgroundMusic.currentTime);
+    });
+
+    backgroundMusic.addEventListener("play", () => {
+      localStorage.setItem(musicStateKey, "true");
+    });
+
+    backgroundMusic.addEventListener("pause", () => {
+      if (!isLeavingPage) {
+        localStorage.setItem(musicStateKey, "false");
+      }
+    });
+
+    window.addEventListener("beforeunload", () => {
+      isLeavingPage = true;
+      localStorage.setItem(musicTimeKey, backgroundMusic.currentTime);
+      localStorage.setItem(musicStateKey, String(!backgroundMusic.paused));
+    });
+
+    window.addEventListener("load", () => {
+      playMusic();
+
+      if (localStorage.getItem(musicStateKey) === "true") {
+        playMusic();
+      }
+    });
+
+    window.addEventListener("click", playMusic, { once: true });
+    window.addEventListener("keydown", playMusic, { once: true });
+    window.addEventListener("touchstart", playMusic, { once: true });
+  </script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video - UniteMevel</title>
+  <link rel="stylesheet" href="UniteMevelD.css">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar" aria-label="Navigasi utama">
+      <a class="brand" href="UniteMevel.html">
+        <span class="brand-name">UniteMevel</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="UniteMevel.html">Beranda</a></li>
+        <li><a href="galeri.html">Galeri</a></li>
+        <li><a href="Kontak.html">Kontak</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="video-page">
+    <header class="video-hero">
+      <p class="hero-label">Video</p>
+      <h1>Video</h1>
+      <p>Kumpulan video pilihan dalam tampilan besar.</p>
+    </header>
+
+    <div class="video-list" aria-label="Daftar video">
+      <article class="video-card" data-video-id="masha">
+        <video controls preload="metadata">
+          <source src="asetvideo/masha the best girl actually.mp4" type="video/mp4">
+          Browser kamu tidak mendukung pemutar video.
+        </video>
+        <p class="video-description">Kalah</p>
+        <div class="video-actions">
+          <button class="love-button" type="button" aria-label="Love video">
+            <img src="asetvideo/love.png" alt="">
+            <span>0</span>
+          </button>
+          <button class="open-comment-button" type="button">Kirim Komentar</button>
+        </div>
+        <div class="comment-list" aria-label="Komentar"></div>
+      </article>
+
+      <article class="video-card" data-video-id="keqing">
+        <video controls preload="metadata">
+          <source src="asetvideo/dont leave me keqing.mp4" type="video/mp4">
+          Browser kamu tidak mendukung pemutar video.
+        </video>
+        <p class="video-description">First B5</p>
+        <div class="video-actions">
+          <button class="love-button" type="button" aria-label="Love video">
+            <img src="asetvideo/love.png" alt="">
+            <span>0</span>
+          </button>
+          <button class="open-comment-button" type="button">Kirim Komentar</button>
+        </div>
+        <div class="comment-list" aria-label="Komentar"></div>
+      </article>
+
+      <article class="video-card" data-video-id="alya">
+        <video controls preload="metadata">
+          <source src="asetvideo/im in love alya.mp4" type="video/mp4">
+          Browser kamu tidak mendukung pemutar video.
+        </video>
+        <p class="video-description">Nah ini</p>
+        <div class="video-actions">
+          <button class="love-button" type="button" aria-label="Love video">
+            <img src="asetvideo/love.png" alt="">
+            <span>0</span>
+          </button>
+          <button class="open-comment-button" type="button">Kirim Komentar</button>
+        </div>
+        <div class="comment-list" aria-label="Komentar"></div>
+      </article>
+
+      <article class="video-card" data-video-id="mahiru">
+        <video controls preload="metadata">
+          <source src="asetvideo/mahiru shiina.mp4" type="video/mp4">
+          Browser kamu tidak mendukung pemutar video.
+        </video>
+        <p class="video-description">Mimpi basah wni</p>
+        <div class="video-actions">
+          <button class="love-button" type="button" aria-label="Love video">
+            <img src="asetvideo/love.png" alt="">
+            <span>0</span>
+          </button>
+          <button class="open-comment-button" type="button">Kirim Komentar</button>
+        </div>
+        <div class="comment-list" aria-label="Komentar"></div>
+      </article>
+    </div>
+  </main>
+
+  <div class="comment-modal" id="comment-modal" aria-hidden="true">
+    <div class="comment-modal-panel" role="dialog" aria-modal="true" aria-labelledby="comment-modal-title">
+      <div class="comment-modal-header">
+        <h2 id="comment-modal-title">Kirim Komentar</h2>
+        <button class="close-comment-modal" type="button" aria-label="Tutup">X</button>
+      </div>
+
+      <form class="comment-form">
+        <input type="text" name="username" placeholder="Username" autocomplete="name" required>
+        <textarea name="comment" placeholder="Tulis komentar" rows="4" required></textarea>
+        <button type="submit">Kirim Komentar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const videos = document.querySelectorAll(".video-card video");
+
+    videos.forEach((currentVideo) => {
+      currentVideo.addEventListener("play", () => {
+        videos.forEach((otherVideo) => {
+          if (otherVideo !== currentVideo) {
+            otherVideo.pause();
+          }
+        });
+      });
+    });
+
+    const videoCards = document.querySelectorAll(".video-card");
+
+    function getVideoData(videoId) {
+      const savedData = localStorage.getItem(`unitemevel-video-${videoId}`);
+      return savedData ? JSON.parse(savedData) : { loved: false, loves: 0, comments: [] };
+    }
+
+    function saveVideoData(videoId, data) {
+      localStorage.setItem(`unitemevel-video-${videoId}`, JSON.stringify(data));
+    }
+
+    const commentModal = document.getElementById("comment-modal");
+    const commentForm = commentModal.querySelector(".comment-form");
+    const closeCommentModal = commentModal.querySelector(".close-comment-modal");
+    let activeVideo = null;
+
+    function openCommentModal(video) {
+      activeVideo = video;
+      commentModal.classList.add("is-open");
+      commentModal.setAttribute("aria-hidden", "false");
+      commentForm.username.focus();
+    }
+
+    function closeModal() {
+      commentModal.classList.remove("is-open");
+      commentModal.setAttribute("aria-hidden", "true");
+      commentForm.reset();
+      activeVideo = null;
+    }
+
+    function renderComments(commentList, comments, expanded = false) {
+      commentList.innerHTML = "";
+
+      if (comments.length === 0) {
+        commentList.innerHTML = '<p class="empty-comments">Belum ada komentar.</p>';
+        return;
+      }
+
+      const visibleComments = expanded ? comments : comments.slice(0, 2);
+
+      visibleComments.forEach((comment) => {
+        const commentItem = document.createElement("div");
+        commentItem.className = "comment-item";
+        commentItem.innerHTML = `
+          <strong></strong>
+          <p></p>
+        `;
+        commentItem.querySelector("strong").textContent = comment.username;
+        commentItem.querySelector("p").textContent = comment.text;
+        commentList.appendChild(commentItem);
+      });
+
+      if (comments.length > 2) {
+        const expandButton = document.createElement("button");
+        expandButton.className = "expand-comments-button";
+        expandButton.type = "button";
+        expandButton.textContent = expanded ? "Sembunyikan komentar" : `Lihat ${comments.length - 2} komentar lainnya`;
+        expandButton.addEventListener("click", () => {
+          renderComments(commentList, comments, !expanded);
+        });
+        commentList.appendChild(expandButton);
+      }
+    }
+
+    videoCards.forEach((videoCard) => {
+      const videoId = videoCard.dataset.videoId;
+      const loveButton = videoCard.querySelector(".love-button");
+      const loveCount = loveButton.querySelector("span");
+      const openCommentButton = videoCard.querySelector(".open-comment-button");
+      const commentList = videoCard.querySelector(".comment-list");
+      const data = getVideoData(videoId);
+
+      function renderVideoData() {
+        loveCount.textContent = data.loves;
+        loveButton.classList.toggle("is-loved", data.loved);
+        renderComments(commentList, data.comments);
+      }
+
+      loveButton.addEventListener("click", () => {
+        data.loved = !data.loved;
+        data.loves += data.loved ? 1 : -1;
+        saveVideoData(videoId, data);
+        renderVideoData();
+      });
+
+      openCommentButton.addEventListener("click", () => {
+        openCommentModal({ data, videoId, renderVideoData });
+      });
+
+      renderVideoData();
+    });
+
+    commentForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      if (!activeVideo) {
+        return;
+      }
+
+      const username = commentForm.username.value.trim();
+      const text = commentForm.comment.value.trim();
+
+      if (!username || !text) {
+        return;
+      }
+
+      activeVideo.data.comments.push({ username, text });
+      saveVideoData(activeVideo.videoId, activeVideo.data);
+      activeVideo.renderVideoData();
+      closeModal();
+    });
+
+    closeCommentModal.addEventListener("click", closeModal);
+
+    commentModal.addEventListener("click", (event) => {
+      if (event.target === commentModal) {
+        closeModal();
+      }
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && commentModal.classList.contains("is-open")) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
