@@ -110,7 +110,37 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+    import {
+      addDoc,
+      collection,
+      doc,
+      getFirestore,
+      increment,
+      onSnapshot,
+      orderBy,
+      query,
+      serverTimestamp,
+      setDoc,
+      where
+    } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0Um0HAdJmY61q7X0wOjtC_SvoA-7zsiU",
+      authDomain: "mevelweb.firebaseapp.com",
+      projectId: "mevelweb",
+      storageBucket: "mevelweb.firebasestorage.app",
+      messagingSenderId: "687837335053",
+      appId: "1:687837335053:web:0d2fc0539791ea5cd38f44",
+      measurementId: "G-E9GLEXRGZG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const commentsCollection = collection(db, "comments");
+    const reactionsCollection = collection(db, "videoReactions");
+
     const videos = document.querySelectorAll(".video-card video");
 
     function loadVideo(video) {
@@ -156,7 +186,7 @@
 
     function getVideoData(videoId) {
       const savedData = localStorage.getItem(`unitemevel-video-${videoId}`);
-      return savedData ? JSON.parse(savedData) : { loved: false, loves: 0, comments: [] };
+      return savedData ? JSON.parse(savedData) : { loved: false, loves: 0 };
     }
 
     function saveVideoData(videoId, data) {
@@ -182,6 +212,52 @@
       activeVideo = null;
     }
 
+    function renderCommentStatus(commentList, message) {
+      commentList.innerHTML = "";
+
+      const status = document.createElement("p");
+      status.className = "empty-comments";
+      status.textContent = message;
+      commentList.appendChild(status);
+    }
+
+    function formatRelativeTime(date) {
+      if (!date) {
+        return "baru saja";
+      }
+
+      const diffInSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      const diffInDays = Math.floor(diffInHours / 24);
+
+      if (diffInSeconds < 60) {
+        return "baru saja";
+      }
+
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes}m ago`;
+      }
+
+      if (diffInHours < 24) {
+        return `${diffInHours}h ago`;
+      }
+
+      if (diffInDays === 1) {
+        return "today";
+      }
+
+      if (diffInDays < 7) {
+        return `${diffInDays}D ago`;
+      }
+
+      return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+    }
+
     function renderComments(commentList, comments, expanded = false) {
       commentList.innerHTML = "";
 
@@ -196,10 +272,14 @@
         const commentItem = document.createElement("div");
         commentItem.className = "comment-item";
         commentItem.innerHTML = `
-          <strong></strong>
+          <div class="comment-meta">
+            <strong></strong>
+            <span></span>
+          </div>
           <p></p>
         `;
         commentItem.querySelector("strong").textContent = comment.username;
+        commentItem.querySelector("span").textContent = formatRelativeTime(comment.createdAt);
         commentItem.querySelector("p").textContent = comment.text;
         commentList.appendChild(commentItem);
       });
@@ -223,28 +303,90 @@
       const openCommentButton = videoCard.querySelector(".open-comment-button");
       const commentList = videoCard.querySelector(".comment-list");
       const data = getVideoData(videoId);
+      const reactionDoc = doc(reactionsCollection, videoId);
+      let latestComments = null;
 
       function renderVideoData() {
         loveCount.textContent = data.loves;
         loveButton.classList.toggle("is-loved", data.loved);
-        renderComments(commentList, data.comments);
+
+        if (!latestComments) {
+          renderCommentStatus(commentList, "Memuat komentar...");
+          return;
+        }
+
+        renderComments(commentList, latestComments);
       }
 
-      loveButton.addEventListener("click", () => {
+      loveButton.addEventListener("click", async () => {
+        const loveChange = data.loved ? -1 : 1;
+
         data.loved = !data.loved;
-        data.loves += data.loved ? 1 : -1;
+        data.loves = Math.max(0, data.loves + loveChange);
+        saveVideoData(videoId, data);
+        renderVideoData();
+
+        loveButton.disabled = true;
+
+        try {
+          await setDoc(
+            reactionDoc,
+            { loves: increment(loveChange) },
+            { merge: true }
+          );
+        } catch (error) {
+          data.loved = !data.loved;
+          data.loves = Math.max(0, data.loves - loveChange);
+          saveVideoData(videoId, data);
+          renderVideoData();
+          alert("Love gagal disimpan. Coba lagi nanti.");
+        } finally {
+          loveButton.disabled = false;
+        }
+      });
+
+      openCommentButton.addEventListener("click", () => {
+        openCommentModal({ videoId });
+      });
+
+      renderVideoData();
+
+      const commentsQuery = query(
+        commentsCollection,
+        where("videoId", "==", videoId),
+        orderBy("createdAt", "desc")
+      );
+
+      onSnapshot(
+        commentsQuery,
+        (snapshot) => {
+          latestComments = snapshot.docs.map((doc) => {
+            const comment = doc.data();
+            return {
+              username: comment.username || "Anonim",
+              text: comment.text || "",
+              createdAt: comment.createdAt?.toDate ? comment.createdAt.toDate() : null
+            };
+          });
+
+          renderVideoData();
+        },
+        () => {
+          renderCommentStatus(commentList, "Komentar belum bisa dimuat.");
+        }
+      );
+
+      onSnapshot(reactionDoc, (snapshot) => {
+        const reactionData = snapshot.data();
+        data.loves = Math.max(0, Number(reactionData?.loves || 0));
         saveVideoData(videoId, data);
         renderVideoData();
       });
 
-      openCommentButton.addEventListener("click", () => {
-        openCommentModal({ data, videoId, renderVideoData });
-      });
-
-      renderVideoData();
+      window.setInterval(renderVideoData, 60000);
     });
 
-    commentForm.addEventListener("submit", (event) => {
+    commentForm.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       if (!activeVideo) {
@@ -258,10 +400,25 @@
         return;
       }
 
-      activeVideo.data.comments.push({ username, text });
-      saveVideoData(activeVideo.videoId, activeVideo.data);
-      activeVideo.renderVideoData();
-      closeModal();
+      const submitButton = commentForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.textContent = "Mengirim...";
+
+      try {
+        await addDoc(commentsCollection, {
+          videoId: activeVideo.videoId,
+          username,
+          text,
+          createdAt: serverTimestamp()
+        });
+
+        closeModal();
+      } catch (error) {
+        alert("Komentar gagal dikirim. Coba lagi nanti.");
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Kirim Komentar";
+      }
     });
 
     closeCommentModal.addEventListener("click", closeModal);

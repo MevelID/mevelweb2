@@ -540,11 +540,26 @@ body::before {
   padding: 12px;
 }
 
-.comment-item strong {
-  display: block;
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 6px;
+}
+
+.comment-item strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: #ffffff;
   font-size: 0.95rem;
+}
+
+.comment-meta span {
+  flex: 0 0 auto;
+  color: rgba(245, 208, 178, 0.72);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .comment-item p,
