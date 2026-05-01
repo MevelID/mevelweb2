@@ -334,6 +334,7 @@
             { merge: true }
           );
         } catch (error) {
+          console.error("Love gagal disimpan:", error);
           data.loved = !data.loved;
           data.loves = Math.max(0, data.loves - loveChange);
           saveVideoData(videoId, data);
@@ -380,12 +381,18 @@
         }
       );
 
-      onSnapshot(reactionDoc, (snapshot) => {
-        const reactionData = snapshot.data();
-        data.loves = Math.max(0, Number(reactionData?.loves || 0));
-        saveVideoData(videoId, data);
-        renderVideoData();
-      });
+      onSnapshot(
+        reactionDoc,
+        (snapshot) => {
+          const reactionData = snapshot.data();
+          data.loves = Math.max(0, Number(reactionData?.loves || 0));
+          saveVideoData(videoId, data);
+          renderVideoData();
+        },
+        (error) => {
+          console.error("Love gagal dimuat:", error);
+        }
+      );
 
       window.setInterval(renderVideoData, 60000);
     });
