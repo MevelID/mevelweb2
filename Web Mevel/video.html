@@ -119,7 +119,6 @@
       getFirestore,
       increment,
       onSnapshot,
-      orderBy,
       query,
       serverTimestamp,
       setDoc,
@@ -353,21 +352,26 @@
 
       const commentsQuery = query(
         commentsCollection,
-        where("videoId", "==", videoId),
-        orderBy("createdAt", "desc")
+        where("videoId", "==", videoId)
       );
 
       onSnapshot(
         commentsQuery,
         (snapshot) => {
-          latestComments = snapshot.docs.map((doc) => {
-            const comment = doc.data();
-            return {
-              username: comment.username || "Anonim",
-              text: comment.text || "",
-              createdAt: comment.createdAt?.toDate ? comment.createdAt.toDate() : null
-            };
-          });
+          latestComments = snapshot.docs
+            .map((doc) => {
+              const comment = doc.data();
+              return {
+                username: comment.username || "Anonim",
+                text: comment.text || "",
+                createdAt: comment.createdAt?.toDate ? comment.createdAt.toDate() : null
+              };
+            })
+            .sort((firstComment, secondComment) => {
+              const firstTime = firstComment.createdAt?.getTime() || 0;
+              const secondTime = secondComment.createdAt?.getTime() || 0;
+              return secondTime - firstTime;
+            });
 
           renderVideoData();
         },
