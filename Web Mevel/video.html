@@ -14,9 +14,10 @@
       </a>
 
       <ul class="nav-links">
-        <li><a href="index.html">Beranda</a></li>
         <li><a href="galeri.html">Galeri</a></li>
+        <li><a href="video.html">Video</a></li>
         <li><a href="Kontak.html">Kontak</a></li>
+        <li><a href="index.html">Beranda</a></li>
       </ul>
     </nav>
   </header>
@@ -25,10 +26,10 @@
     <header class="video-hero">
       <p class="hero-label">Video</p>
       <h1>Video</h1>
-      <p>Kumpulan video pilihan dalam tampilan besar.</p>
+      <p>Random</p>
     </header>
 
-    <div class="video-list" aria-label="Daftar video">
+    <div class="video-list" id="video-list" aria-label="Daftar video">
       <article class="video-card" data-video-id="masha">
         <video controls preload="none" data-video-src="asetvideo/masha the best girl actually.mp4">
           <source type="video/mp4">
@@ -95,6 +96,26 @@
     </div>
   </main>
 
+  <button class="open-video-submit-button" type="button" aria-label="Up Video">+</button>
+
+  <div class="video-submit-modal" id="video-submit-modal" aria-hidden="true">
+    <div class="video-submit-panel" role="dialog" aria-modal="true" aria-labelledby="video-submit-title">
+      <div class="comment-modal-header">
+        <h2 id="video-submit-title">Up Video</h2>
+        <button class="close-video-submit-modal" type="button" aria-label="Tutup">X</button>
+      </div>
+
+      <form class="video-submit-form" id="video-submit-form">
+        <input type="text" name="submittedBy" placeholder="Nama kamu" autocomplete="name" required>
+        <input type="text" name="title" placeholder="Judul video" required>
+        <input type="url" name="youtubeUrl" placeholder="Link YouTube" required>
+        <textarea name="description" placeholder="Deskripsi singkat" rows="3" required></textarea>
+        <button type="submit">Send for Review</button>
+        <p class="video-submit-status" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+
   <div class="comment-modal" id="comment-modal" aria-hidden="true">
     <div class="comment-modal-panel" role="dialog" aria-modal="true" aria-labelledby="comment-modal-title">
       <div class="comment-modal-header">
@@ -139,6 +160,7 @@
     const db = getFirestore(app);
     const commentsCollection = collection(db, "comments");
     const reactionsCollection = collection(db, "videoReactions");
+    const videosCollection = collection(db, "videos");
 
     const videos = document.querySelectorAll(".video-card video");
 
@@ -181,7 +203,13 @@
       });
     });
 
-    const videoCards = document.querySelectorAll(".video-card");
+    const videoList = document.getElementById("video-list");
+    const openVideoSubmitButton = document.querySelector(".open-video-submit-button");
+    const videoSubmitModal = document.getElementById("video-submit-modal");
+    const videoSubmitForm = document.getElementById("video-submit-form");
+    const videoSubmitStatus = videoSubmitForm.querySelector(".video-submit-status");
+    const closeVideoSubmitModal = videoSubmitModal.querySelector(".close-video-submit-modal");
+    const initializedVideoIds = new Set();
 
     function getVideoData(videoId) {
       const savedData = localStorage.getItem(`unitemevel-video-${videoId}`);
@@ -209,6 +237,20 @@
       commentModal.setAttribute("aria-hidden", "true");
       commentForm.reset();
       activeVideo = null;
+    }
+
+    function openVideoSubmit() {
+      videoSubmitStatus.textContent = "";
+      videoSubmitModal.classList.add("is-open");
+      videoSubmitModal.setAttribute("aria-hidden", "false");
+      videoSubmitForm.submittedBy.focus();
+    }
+
+    function closeVideoSubmit() {
+      videoSubmitModal.classList.remove("is-open");
+      videoSubmitModal.setAttribute("aria-hidden", "true");
+      videoSubmitForm.reset();
+      videoSubmitStatus.textContent = "";
     }
 
     function renderCommentStatus(commentList, message) {
@@ -295,8 +337,68 @@
       }
     }
 
-    videoCards.forEach((videoCard) => {
+    function extractYouTubeId(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        if (parsedUrl.hostname.includes("youtu.be")) {
+          return parsedUrl.pathname.split("/").filter(Boolean)[0] || "";
+        }
+
+        if (parsedUrl.searchParams.has("v")) {
+          return parsedUrl.searchParams.get("v");
+        }
+
+        const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+        const embedLikeIndex = pathParts.findIndex((part) => ["embed", "shorts", "live"].includes(part));
+
+        if (embedLikeIndex >= 0) {
+          return pathParts[embedLikeIndex + 1] || "";
+        }
+      } catch (error) {
+        const match = url.match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : "";
+      }
+
+      return "";
+    }
+
+    function createYoutubeVideoCard(videoId, video) {
+      const videoCard = document.createElement("article");
+      videoCard.className = "video-card";
+      videoCard.dataset.videoId = videoId;
+      videoCard.dataset.dynamicVideo = "true";
+      videoCard.innerHTML = `
+        <iframe
+          src="https://www.youtube.com/embed/${video.youtubeId}"
+          title=""
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen>
+        </iframe>
+        <p class="video-description"></p>
+        <div class="video-actions">
+          <button class="love-button" type="button" aria-label="Love video">
+            <img src="asetvideo/love.png" alt="">
+            <span>0</span>
+          </button>
+          <button class="open-comment-button" type="button">Kirim Komentar</button>
+        </div>
+        <div class="comment-list" aria-label="Komentar"></div>
+      `;
+      videoCard.querySelector("iframe").title = video.title || "Video YouTube";
+      videoCard.querySelector(".video-description").textContent = video.description || video.title || "Video kiriman";
+      return videoCard;
+    }
+
+    function initializeVideoCard(videoCard) {
       const videoId = videoCard.dataset.videoId;
+
+      if (initializedVideoIds.has(videoId)) {
+        return;
+      }
+
+      initializedVideoIds.add(videoId);
+
       const loveButton = videoCard.querySelector(".love-button");
       const loveCount = loveButton.querySelector("span");
       const openCommentButton = videoCard.querySelector(".open-comment-button");
@@ -408,6 +510,90 @@
         });
 
       window.setInterval(renderVideoData, 60000);
+    }
+
+    document.querySelectorAll(".video-card").forEach(initializeVideoCard);
+
+    const approvedVideosQuery = query(
+      videosCollection,
+      where("status", "==", "approved")
+    );
+
+    onSnapshot(
+      approvedVideosQuery,
+      (snapshot) => {
+        snapshot.docs.forEach((videoDoc) => {
+          const videoId = `youtube-${videoDoc.id}`;
+
+          if (initializedVideoIds.has(videoId)) {
+            return;
+          }
+
+          const video = videoDoc.data();
+
+          if (!video.youtubeId) {
+            return;
+          }
+
+          const videoCard = createYoutubeVideoCard(videoId, video);
+          videoList.appendChild(videoCard);
+          initializeVideoCard(videoCard);
+        });
+      },
+      (error) => {
+        console.error("Video approved gagal dimuat:", error);
+      }
+    );
+
+    videoSubmitForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const submittedBy = videoSubmitForm.submittedBy.value.trim();
+      const title = videoSubmitForm.title.value.trim();
+      const youtubeUrl = videoSubmitForm.youtubeUrl.value.trim();
+      const description = videoSubmitForm.description.value.trim();
+      const youtubeId = extractYouTubeId(youtubeUrl);
+      const submitButton = videoSubmitForm.querySelector('button[type="submit"]');
+
+      if (!youtubeId) {
+        videoSubmitStatus.textContent = "Link YouTube belum valid.";
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Mengirim...";
+      videoSubmitStatus.textContent = "";
+
+      try {
+        await addDoc(videosCollection, {
+          submittedBy,
+          title,
+          youtubeUrl,
+          youtubeId,
+          description,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+
+        videoSubmitForm.reset();
+        videoSubmitStatus.textContent = "Video terkirim. Tunggu dicek dulu ya.";
+        window.setTimeout(closeVideoSubmit, 1200);
+      } catch (error) {
+        console.error("Video gagal dikirim:", error);
+        videoSubmitStatus.textContent = "Video gagal dikirim. Coba lagi nanti.";
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Kirim untuk Dicek";
+      }
+    });
+
+    openVideoSubmitButton.addEventListener("click", openVideoSubmit);
+    closeVideoSubmitModal.addEventListener("click", closeVideoSubmit);
+
+    videoSubmitModal.addEventListener("click", (event) => {
+      if (event.target === videoSubmitModal) {
+        closeVideoSubmit();
+      }
     });
 
     commentForm.addEventListener("submit", async (event) => {
@@ -456,6 +642,10 @@
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && commentModal.classList.contains("is-open")) {
         closeModal();
+      }
+
+      if (event.key === "Escape" && videoSubmitModal.classList.contains("is-open")) {
+        closeVideoSubmit();
       }
     });
   </script>
