@@ -116,12 +116,12 @@
       addDoc,
       collection,
       doc,
+      getDoc,
       getFirestore,
-      increment,
       onSnapshot,
       query,
+      runTransaction,
       serverTimestamp,
-      setDoc,
       where
     } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
@@ -317,6 +317,12 @@
         renderComments(commentList, latestComments);
       }
 
+      function applyReactionData(reactionData) {
+        data.loves = Math.max(0, Number(reactionData?.loves || 0));
+        saveVideoData(videoId, data);
+        renderVideoData();
+      }
+
       loveButton.addEventListener("click", async () => {
         const loveChange = data.loved ? -1 : 1;
 
@@ -328,11 +334,13 @@
         loveButton.disabled = true;
 
         try {
-          await setDoc(
-            reactionDoc,
-            { loves: increment(loveChange) },
-            { merge: true }
-          );
+          await runTransaction(db, async (transaction) => {
+            const reactionSnapshot = await transaction.get(reactionDoc);
+            const currentLoves = Number(reactionSnapshot.data()?.loves || 0);
+            const nextLoves = Math.max(0, currentLoves + loveChange);
+
+            transaction.set(reactionDoc, { loves: nextLoves }, { merge: true });
+          });
         } catch (error) {
           console.error("Love gagal disimpan:", error);
           data.loved = !data.loved;
@@ -384,15 +392,20 @@
       onSnapshot(
         reactionDoc,
         (snapshot) => {
-          const reactionData = snapshot.data();
-          data.loves = Math.max(0, Number(reactionData?.loves || 0));
-          saveVideoData(videoId, data);
-          renderVideoData();
+          applyReactionData(snapshot.data());
         },
         (error) => {
           console.error("Love gagal dimuat:", error);
         }
       );
+
+      getDoc(reactionDoc)
+        .then((snapshot) => {
+          applyReactionData(snapshot.data());
+        })
+        .catch((error) => {
+          console.error("Love awal gagal dimuat:", error);
+        });
 
       window.setInterval(renderVideoData, 60000);
     });
